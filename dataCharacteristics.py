@@ -6,7 +6,7 @@ import logging
 from os import getcwd
 import csv
 import sys
-from dataStatistics import route_cols
+from dataStatistics import TableData
 
 
 __author__ = 'Etienne Pouget'
@@ -105,10 +105,11 @@ if __name__ == '__main__':
     data, headers = csvToDict(filepath)
     dataDimensions(data)
     find_data_type(data, headers)
-    data, fieldnames = route_cols(data, headers)
+    table = TableData('veggies', data, headers)
+    table.start_analysis()
 
     with open(getcwd() + '/us-data-veggies/work-us-veggies-exp.csv', 'w') as f:
-        writer = csv.DictWriter(f, fieldnames)
+        writer = csv.DictWriter(f, table.tableFields)
         writer.writeheader()
-        for row in data:
+        for row in table.tableData:
             writer.writerow(row)
