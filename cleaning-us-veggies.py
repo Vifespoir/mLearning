@@ -5,6 +5,7 @@ import re
 from os import getcwd
 import pprint
 import logging
+from dataCharacteristics import choose_file
 
 logging.basicConfig(
     level=logging.DEBUG, format=' %(asctime)s - %(levelname)s - %(message)s')
@@ -181,12 +182,12 @@ def clean_empty_columns(data, threshold=0):
 
 
 if __name__ == '__main__':
-    filename = '/us-data-veggies/us-veggies-exp.csv'
+    filename = '/' + choose_file()
     dialect, headers, data = csv_to_dict(filename)
     data, errorList, updated_headers = clean_empty_columns(data)
     headers = [i for i in headers if i in updated_headers]
     print(len(headers))
     print(len(updated_headers))
 
-    filename = '/us-data-veggies/clean-us-veggies-exp.csv'
+    filename = '/' + filename[5:]
     dict_to_csv(filename=filename, dialect=dialect, headers=headers, data=data)

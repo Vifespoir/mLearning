@@ -3,7 +3,7 @@
 # TODO add a file parser to choose file input
 
 import logging
-from os import getcwd
+from os import getcwd, walk, chdir
 import csv
 from dataStatistics import TableData
 
@@ -71,16 +71,35 @@ def csvToDict(filepath):
     return data, headers
 
 
+def choose_file():
+    """Print a list of file and ask user to pick one."""
+    chdir(getcwd()+'/data/US')
+    f = []
+    for (dirpath, dirnames, filenames) in walk(getcwd()):
+        f.extend(filenames)
+    print('Which file do you want to work on?')
+    for i in f:
+        print(str(f.index(i)) + ' - ' + i)
+    while True:
+        try:
+            return f[int(input('Type its number:   '))]
+        except ValueError or IndexError:
+            print('Invalid input.')
+
+
 if __name__ == '__main__':
     # filepath = input('Enter filepath from script directory \
     #                 (/example/data.csv):   ')
-    filepath = '/us-data-veggies/clean-us-veggies-exp.csv'
-    data, headers = csvToDict(filepath)
+    filename = '/' + choose_file()
+    data, headers = csvToDict(filename)
     dataDimensions(data)
     table = TableData('veggies', data, headers)
     table.start_analysis()
 
-    with open(getcwd() + '/us-data-veggies/work-us-veggies-exp.csv', 'w') as f:
+    with open(getcwd() + filename, 'r') as f, open(getcwd() + filename + '.old', 'w') as fOld:
+        fOld.write(f.read())
+
+    with open(getcwd() + filename, 'w') as f:
         writer = csv.DictWriter(f, table.tableFields)
         writer.writeheader()
         for row in table.tableData:

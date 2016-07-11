@@ -155,9 +155,11 @@ class TableData:
                 if colNumber == "q":
                     break
                 else:
-                    field = colAccess[int(colNumber)]
-                    self.show_col_info(field, graphs)
-                    stdout.write('`Enter a valid input.`\n')
+                    try:
+                        field = colAccess[int(colNumber)]
+                        self.show_col_info(field, graphs)
+                    except KeyError:
+                        stdout.write('Enter a valid input.')
                 colAccess = self.column_menu()
             for field in self.colToDelete:
                 self.keep_col(field, False)
