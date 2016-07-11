@@ -5,7 +5,6 @@
 import logging
 from os import getcwd
 import csv
-import sys
 from dataStatistics import TableData
 
 
@@ -72,39 +71,12 @@ def csvToDict(filepath):
     return data, headers
 
 
-def find_data_type(data, headers):
-    """Produce columns statistics on the type of data they contains."""
-    colCounts = []
-    for h in headers:
-        dType = [0]*3
-        for row in data:
-            try:
-                a = float(row[h])
-                if isinstance(a, float):
-                    dType[0] += 1
-            except ValueError:
-                if len(row[h]) > 1:
-                    dType[1] += 1
-                else:
-                    dType[2] += 1
-        colCounts.append(dType)
-
-    sys.stdout.write('{:2}-{:20}  {:10}  {:10}  {:10}\n'.format(
-        '#', 'Col#', 'Number', 'Strings', 'Other'))
-
-    iCol = 0
-    for types in colCounts:
-        sys.stdout.write('{:2}-{:20}  {:10}  {:10}  {:10}\n'.format(
-            iCol, headers[iCol][:19], types[0], types[1], types[2]))
-        iCol += 1
-
 if __name__ == '__main__':
     # filepath = input('Enter filepath from script directory \
     #                 (/example/data.csv):   ')
     filepath = '/us-data-veggies/clean-us-veggies-exp.csv'
     data, headers = csvToDict(filepath)
     dataDimensions(data)
-    find_data_type(data, headers)
     table = TableData('veggies', data, headers)
     table.start_analysis()
 

@@ -1,14 +1,15 @@
+"""Module to understand and select interesting columns from row data."""
+
 import numpy
 import logging
 from pprint import pformat
 from sys import stdout
 import pylab
 import scipy.stats as stats
+from random import choice
 
-# TODO triple choice for rename and keep
 # TODO find out why val and vol don't appear
-# TODO exclude rescued columns from showing up with automatically kept columns
-
+# TODO order columns in menu
 
 logging.basicConfig(
     level=logging.DEBUG, format=' %(asctime)s - %(levelname)s - %(message)s')
@@ -26,6 +27,7 @@ class ColInfoConstants:
         self.colQuantiles = 'Quantile Boundaries'
         self.ID = 'id'
         self.colLabels = 'Unique Labels (with count)'
+        self.colLabelsInfo = 'Info'
 
 
 class TableData:
@@ -41,9 +43,10 @@ class TableData:
         self.tableColumns = self.generate_cols()
         self.colToDelete = []
         self.find_categories()
+        self.colKept = []
 
     def generate_cols(self, threshold=0.9):
-        """Generate column lists."""
+        """Generate column lists and associated statistics."""
         columns = {}
         for field in self.tableFields:
             self.colInfo[field] = {}
@@ -90,6 +93,32 @@ class TableData:
         """Get the specified column."""
         return self.tableFields
 
+    def column_menu(self):
+        """Display a menu and let the user choose on which column he wants to work."""
+        stdout.write('{:>2}-{:>20}  {:>10}  {:>10}  {:>10}\n'
+                     .format('#', 'Column name', 'Type', 'Quality', 'Status'))
+        iCol = 0
+        easyAccess = {}
+        for field in self.tableFields:
+            easyAccess[iCol] = field
+            colType = self.colInfo[field][self.Constants.colType]
+            colPercent = self.colInfo[field][self.Constants.colFloat]
+            if colType is not float:
+                colType = 'String'
+                colPercent = 1 - colPercent
+            else:
+                colType = 'Numeric'
+
+            if field in self.colToDelete:
+                colStatus = 'DELETE'
+            else:
+                colStatus = 'KEEP'
+            stdout.write('{:>2}-{:>20}  {:>10}  {:>.2%}  {:>10}\n'
+                         .format(iCol, field[:19], colType, colPercent, colStatus))
+            iCol += 1
+
+        return easyAccess
+
     def show_col_info(self, field, graphs):
         """Show columns info and assist in making decision about each column."""
         stdout.write('\nColumn Name:   "%s"\n' % field)
@@ -97,19 +126,46 @@ class TableData:
         if graphs and self.colInfo[field][self.Constants.colType] is not str\
                 and self.choose('Do you want to see "%s" graph?' % field):
             self.plot_col(field)
-        if self.keep_col(field):
-            self.rename_col(field)
+        stdout.write('What do you want to do?\n')
+        stdout.write('1 - keep the column\n')
+        stdout.write('2 - keep and rename the column\n')
+        stdout.write('3 - delete the column\n')
+        while True:
+            choice = input('Your choice, 1-3:   ')
+            if choice == '1':
+                self.keep_col(field, True)
+                break
+            elif choice == '2':
+                self.keep_col(field, True)
+                self.rename_col(field)
+                break
+            elif choice == '3':
+                self.keep_col(field, False)
+                break
+            else:
+                stdout.write('Wrong input.\n')
 
     def start_analysis(self):
         """Start the data analysis."""
-        logging.info('Rescuing columns to be automatically deleted...')
-        graphs = self.choose('Do you want to see graphs?')
-        for field in self.colToDelete:
-            self.show_col_info(field, graphs)
-        logging.info('Checking columns to be automatically kept...')
-        graphs = self.choose('Do you want to see graphs?')
-        for field in self.tableFields:
-            self.show_col_info(field, graphs)
+        if self.choose('Manual inspection?'):
+            graphs = self.choose('Do you want to see graphs?')
+            colAccess = self.column_menu()
+            while True:
+                colNumber = input('Enter a column number: ("q" to exit)  ')
+                if colNumber == "q":
+                    break
+                else:
+                    field = colAccess[int(colNumber)]
+                    self.show_col_info(field, graphs)
+                    stdout.write('`Enter a valid input.`\n')
+                colAccess = self.column_menu()
+            for field in self.colToDelete:
+                self.keep_col(field, False)
+
+        else:
+            stdout.write('Columns are going to be automatically processed.')
+            for field in self.colToDelete:
+                self.keep_col(field, False)
 
     def transform_col_into_numpy_array(self):
         """Calculate the mean variance for a given column."""
@@ -149,13 +205,27 @@ class TableData:
                 catDict[elt] += 1
 
             catPrint = {k: v for k, v in catDict.items() if v > 1}
+            additionalInfo = ''
+            if len(catPrint) > 40:
+                rand = []
+                for i in range(40):
+                    rand.append(choice(list(catPrint.keys())))
+                catPrint = {k: v for k, v in catPrint.items() if k in rand}
+
+                additionalInfo += 'Too many categories, only displaying a random sample of 40.'
+
             self.colInfo[col][self.Constants.colLabels] = catPrint
+
             if self.colInfo[col][self.Constants.colType] is float:
                 if len(set([v for v in catDict.values()])) <= 1:
                     self.colToDelete.append(col)
+                    additionalInfo += 'Column to be deleted because it contains only one value.'
 
             elif len(catPrint) <= 1 and col != self.Constants.ID:
                 self.colToDelete.append(col)
+                additionalInfo += 'Column to be deleted because it contains too many non-numeric categories.'
+
+            self.colInfo[col][self.Constants.colLabelsInfo] = additionalInfo
 
     def plot_col(self, field):
         """Plot the data of a column."""
@@ -164,41 +234,38 @@ class TableData:
 
     def rename_col(self, field):
         """Rename columns."""
-        newName = {}
-        if self.choose('Do you want to rename "%s"?' % field):
-            newName = input('Enter new column name:')
+        newName = input('Enter new column name:')
+        try:
+            for row in self.tableData:
+                row[newName] = row.pop(field)
+            self.tableColumns[newName] = self.tableColumns.pop(field)
+            self.tableFields[self.tableFields.index(field)] = newName
+            self.colInfo[newName] = self.colInfo.pop(field)
             try:
-                for row in self.tableData:
-                    row[newName] = row.pop(field)
-                self.tableColumns[newName] = self.tableColumns.pop(field)
-                self.tableFields[self.tableFields.index(field)] = newName
-                self.colInfo[newName] = self.colInfo.pop(field)
-                try:
-                    self.colToDelete[self.colToDelete.index(field)] = newName
-                except ValueError:
-                    pass
-            except KeyError as e:
-                logging.warning("Trying to rename a column that doesn't exist: %s" % e)
-
-    def keep_col(self, field):
-        """Store data after both manual and autnatic sorting."""
-        if self.choose('Do you want to keep "%s" column?' % field):
-            try:
-                self.colToDelete.remove(field)
+                self.colToDelete[self.colToDelete.index(field)] = newName
             except ValueError:
                 pass
+        except KeyError as e:
+            logging.warning("Trying to rename a column that doesn't exist: %s" % e)
+
+    def keep_col(self, field, boolean):
+        """Ask human for decision about the destiny of a column."""
+        if boolean is True:
             logging.info('Keeping: %s' % field)
+            self.colToDelete = [c for c in self.colToDelete if c != field]
+            self.colKept.append(field)
 
             return True
 
         else:
             logging.info('Deleting: %s' % field)
+            self.colToDelete = [c for c in self.colToDelete if c != field]
+            self.tableFields.remove(field)
+            self.tableColumns.pop(field)
+            self.colInfo.pop(field)
             try:
-                self.tableFields.remove(field)
                 for row in self.tableData:
                     row.pop(field)
-                self.tableColumns.pop(field)
-                self.colInfo.pop(field)
             except KeyError as e:
                 logging.warning("Trying to delete a column that doesn't exist: %s" % e)
 
