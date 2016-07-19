@@ -12,7 +12,7 @@ from dataStatistics import TableData
 from random import uniform
 
 # TODO let user choose a column to plot colors
-# TODO arrange the legend conditionally show the items
+# TODO pick what to be displayed from legend
 
 class dataPlot():
     """Child class from dataStatistics to plot interesting data."""
@@ -23,11 +23,31 @@ class dataPlot():
         self.dataFile = dataFile
         self.data = self.read_csv()
         self.set_col_to_categorical()
+        self.description = self.data.describe()
+        self.numericData = self.data.select_dtypes(include=['float64'])
+        self.normalize_data()
 
-    def plot_quantiles(self, col):
+    def plot_quartiles(self, col):
         """Open a quantile representation of an attribute."""
         stats.probplot(self.data[col], dist="norm", plot=pylab)
         pylab.show()
+
+    def boxplot_all_quartiles(self, normalized=False):
+        """Plot all normalized quartiles."""
+        yLabel = "Quartile Ranges"
+        if normalized:
+            array = self.numericData.values
+            yLabel = yLabel + "- Normalized"
+        else:
+            array = self.oldNumericData.values
+        plot.boxplot(array)
+        plot.xlabel("Attribute Index")
+        plot.ylabel(yLabel)
+        x = np.array(range(len(self.numericData.columns) + 1))
+        print(self.numericData.columns)
+        plot.xticks(x, self.numericData.columns.insert(0, ''))
+        plot.show()
+
 
     def read_csv(self):
         """Read a csv file."""
@@ -72,6 +92,8 @@ class dataPlot():
         print(data)
         plot.figure()
         parallel_coordinates(data, 'name')
+        plot.xlabel("Attribute Index")
+        plot.ylabel("Attribute Values")
         plot.legend(loc='lower center')
         plot.show()
 
@@ -105,14 +127,36 @@ class dataPlot():
         plot.ylabel('Target Value')
         plot.show()
 
+    def plot_pearson_correlation(self, normalized=False):
+        """Create a heatmap of attributes."""
+        if normalized:
+            data = self.numericData
+        else:
+            data = self.oldNumericData
+
+        corrDataFrame = DataFrame().corr(data)
+
+        plot.pcolor(corrDataFrame)
+        plot.show()
+
+    def normalize_data(self):
+        """Normalize columns to improve graphical representations."""
+        self.oldNumericData = self.numericData.copy()
+        for i in range(len(self.numericData.columns)):
+            mean = self.description.iloc[1, i]
+            std_dev = self.description.iloc[2, i]
+            self.numericData.iloc[:, i:(i+1)] = (self.numericData.iloc[:, i:(i+1)] - mean) / std_dev
+
 
 if __name__ == '__main__':
     dataFile = '/home/vifespoir/github/mLearning/data/US/veggies-exp.csv'
     plots = dataPlot('us-veggies', dataFile)
-    plots.print_head_and_tail()
-    plots.print_summary_of_data()
-    print(plots.data.columns)
+    # plots.print_head_and_tail()
+    # plots.print_summary_of_data()
     # plots.parallel_coordinates_graph()
-    # plots.plot_quantiles('val')
+    # plots.plot_quartiles('val')
+    # plots.boxplot_all_quartiles(normalized=False)
+    # plots.boxplot_all_quartiles(normalized=True)
     # plots.plot_target_correlation('vol')
-    plots.cross_plotting_pairs_of_attributes('vol', 'val')
+    # plots.cross_plotting_pairs_of_attributes('vol', 'val')
+    # plots.plot_pearson_correlation()
