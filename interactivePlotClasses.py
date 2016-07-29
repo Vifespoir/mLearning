@@ -46,7 +46,7 @@ class AxesSequence(object):
 
     def show(self):
         self.axes[0].set_visible(True)
-        plt.show()
+        return self.fig
 
 
 class AxesVisibility(object):
@@ -141,4 +141,4 @@ class AxesVisibility(object):
 
     def show(self):
         self.generate_legend()
-        plt.show()
+        return self.fig

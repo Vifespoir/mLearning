@@ -11,20 +11,24 @@ import matplotlib.dates as  mdates
 import matplotlib.colors as colors
 import matplotlib.cm as cmax
 
+from bokeh.plotting import figure
+from bokeh import mpl
+from bokeh.charts import BoxPlot
+from bokeh.plotting import output_file, show
+
 import pylab
 import scipy.stats as stats
 
 import sys
-from dataStatistics import TableData
 from datetime import date
 
-from interactivePlotClasses import AxesSequence, AxesVisibility
+from mLearning.interactivePlotClasses import AxesSequence, AxesVisibility
 
 # TODO let user choose a column to plot colors
 # TODO pick what to be displayed from legend
 
 
-class dataPlot():
+class DataPlot():
     """Child class from dataStatistics to plot interesting data."""
 
     def __init__(self, tableName, dataFile):
@@ -34,38 +38,31 @@ class dataPlot():
         self.data = pd.read_csv(self.dataFile, index_col='name')
         # self.set_col_to_categorical()
         print(self.data.columns)
+        print(self.data.index)
         self.description = self.data.describe()
         self.numericData = self.data.select_dtypes(include=['float64'])
         self.normalize_data()
-
-    def plot_quartiles(self, col):
-        """Open a quantile representation of an attribute."""
-        stats.probplot(self.data[col], dist="norm", plot=pylab)
-        pylab.show()
+        self.summary = self.data.describe()
 
     def boxplot_all_quartiles(self, normalized=False):
         """Plot all normalized quartiles."""
-        yLabel = "Quartile Ranges"
+        title = "Quartile Ranges"
         if normalized:
-            array = self.numericData.values
-            yLabel = yLabel + "- Normalized"
+            title = title + "- Normalized"
+            data = self.normalizedData
         else:
-            array = self.oldNumericData.values
-        plt.boxplot(array)
-        plt.xlabel("Attribute Index")
-        plt.ylabel(yLabel)
-        x = np.array(range(1, len(self.numericData.columns) + 1))
-        plt.xticks(x, self.numericData.columns)
-        plt.show()
+            data = self.numericData
 
-    def print_head_and_tail(self):
-        """Print the head and tail of a dataset."""
-        print(self.data.head())
-        print(self.data.tail())
+        # Prepare a new, simpler data frame with only attributes and their values
+        data = data.stack() # Stack data to get one attribute value per line
+        newData = []
+        for d in data.items():
+            newData.append([d[0][1], d[1]]) # Select the attribute and its value
 
-    def print_summary_of_data(self):
-        """Print a summary of the data."""
-        print(self.data.describe())
+        newData =  DataFrame(newData, columns=['attribute', 'value'])
+        graph = BoxPlot(newData, values='value', label='attribute', title=title)
+
+        return graph # return the boxplot graph for html generation
 
     def set_col_to_categorical(self):
         """Get a list of attribute for a given column."""
@@ -78,7 +75,7 @@ class dataPlot():
     def parallel_coordinates_graph(self, normalized=False):
         """Open a parallel coordinates graph of the attributes."""
         if normalized:
-            data = self.NormalizedData
+            data = self.normalizedData
         else:
             data = self.numericData
             print(data)
@@ -105,7 +102,9 @@ class dataPlot():
         for ax in axes.axes:
             ax.set_ylim(axes.legendAxe.get_ylim())
 
-        axes.show()
+        fig = axes.show()
+
+        return fig
 
     def cross_plotting_pairs_of_attributes(self, firstCol, secondCol):
         """Open a a graph of correlated pairs of attributes."""
@@ -116,7 +115,8 @@ class dataPlot():
         plt.xlabel(self.data[firstCol].name)
         plt.ylabel(self.data[secondCol].name)
 
-        plt.show()
+        output_file("cross_plotting_pairs_of_attributes.html", title="cross_plotting_pairs_of_attributes")
+        show(mpl.to_bokeh())
 
     def plot_target_correlation(self, col):
         """Open a graph of attribute and its target attribute."""
@@ -135,7 +135,8 @@ class dataPlot():
 
         plt.xlabel('Attribute Value')
         plt.ylabel('Target Value')
-        plt.show()
+        output_file("plot_target_correlation.html", title="plot_target_correlation")
+        show(mpl.to_bokeh())
 
     def plot_pearson_correlation(self, normalized=False):
         """Create a heatmap of attributes."""
@@ -150,15 +151,16 @@ class dataPlot():
         x = np.array([r - 0.5 for r in range(1, len(self.numericData.columns) + 1)])
         plt.xticks(x, self.numericData.columns)
         plt.yticks(x, self.numericData.columns)
-        plt.show()
+        output_file("plot_pearson_correlation.html", title="plot_pearson_correlation")
+        show(mpl.to_bokeh())
 
     def normalize_data(self):
         """Normalize columns to improve graphical representations."""
-        self.NormalizedData = self.numericData.copy()
-        for i in range(len(self.NormalizedData.columns)):
+        self.normalizedData = self.numericData.copy()
+        for i in range(len(self.normalizedData.columns)):
             mean = self.description.iloc[1, i]
             std_dev = self.description.iloc[2, i]
-            self.NormalizedData.iloc[:, i:(i+1)] = (self.NormalizedData.iloc[:, i:(i+1)] - mean) / std_dev
+            self.normalizedData.iloc[:, i:(i+1)] = (self.normalizedData.iloc[:, i:(i+1)] - mean) / std_dev
 
     def transpose_index(self):
         """Transpose the data according to the index."""
@@ -179,20 +181,23 @@ class dataPlot():
                 ax.xaxis.set_minor_locator(years)
                 ax.set_xticklabels(dateList, rotation=90)
                 ax.legend()
-        axes.show()
 
-        return self.data.transpose()
+        fig = axes.show()
+
+        # self.transposedData = self.data.transpose()
+
+        return fig
 
 
 if __name__ == '__main__':
-    dataFile = '/home/vifespoir/github/mLearning/data/US/veggies-exp.csv'
-    plots = dataPlot('us-veggies', dataFile)
+    dataFile = '/home/vifespoir/github/mLearningApp/mLearning/data/US/veggies-exp.csv'
+    plots = DataPlot('us-veggies', dataFile)
     # plots.print_head_and_tail()
     # plots.print_summary_of_data()
     # plots.data = plots.transpose_index()
-    plots.parallel_coordinates_graph(normalized=False)
+    # plots.parallel_coordinates_graph(normalized=False)
     # plots.plot_quartiles('val')
-    # plots.boxplot_all_quartiles(normalized=False)
+    plots.boxplot_all_quartiles(normalized=True)
     # plots.boxplot_all_quartiles(normalized=True)
     # plots.plot_target_correlation('vol')
     # plots.cross_plotting_pairs_of_attributes('vol', 'val')
