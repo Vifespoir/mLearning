@@ -15,6 +15,9 @@ from bokeh.plotting import figure
 from bokeh import mpl
 from bokeh.charts import BoxPlot
 from bokeh.plotting import output_file, show
+from bokeh.models import CheckboxGroup
+from bokeh.io import curdoc
+from bokeh.layouts import row
 
 import pylab
 import scipy.stats as stats
@@ -22,7 +25,7 @@ import scipy.stats as stats
 import sys
 from datetime import date
 
-from mLearning.interactivePlotClasses import AxesSequence, AxesVisibility
+from interactivePlotClasses import AxesSequence, AxesVisibility
 
 # TODO let user choose a column to plot colors
 # TODO pick what to be displayed from legend
@@ -74,6 +77,7 @@ class DataPlot():
 
     def parallel_coordinates_graph(self, normalized=False):
         """Open a parallel coordinates graph of the attributes."""
+        output_file('parallel_coordinates_graph.html')
         if normalized:
             data = self.normalizedData
         else:
@@ -87,23 +91,30 @@ class DataPlot():
 
         axes = AxesVisibility(axeNames=indexes, columns=data.columns) # works with numeric indexes see for loop
 
-        for i, ax in zip(range(len(indexes)), axes):
+        checkbox = CheckboxGroup(labels=indexes, active=list(range(len(indexes))), width=100)
+        fig = figure()
+        lines = {}
+        for i in range(len(indexes)):
             colorVal = scalarMap.to_rgba(i)
-            for value in data.loc[indexes[i]].values:
-                ax.plot(range(len(data.columns)), value, color=colorVal, label=indexes[i])
+            colorVal = colors.rgb2hex(colorVal)
+            numlines = len(data.loc[indexes[i]].values)
+            xs, ys = [list(range(len(data.columns)))]*numlines, [list(v) for v in data.loc[indexes[i]].values]
+            xy = zip(xs, ys)
+            for item in xy:
+                print(item)
+            print(len(xs), len(ys))
+            lines[indexes[i]] = fig.multi_line(xs=xs, ys=ys, line_color=colorVal)
 
-            ylim, ylimLegend = ax.get_ylim(), list(axes.legendAxe.get_ylim())
-            if ylim[0] < ylimLegend[0]:
-                ylimLegend[0] = ylim[0]
-            if ylim[1] > ylimLegend[1]:
-                ylimLegend[1] = ylim[1]
-            axes.legendAxe.set_ylim(ylimLegend)
+        def update(attr, old, new):
+            for key in lines:
+                lines[key].visible = indexes.index(key) in checkbox.active
 
-        for ax in axes.axes:
-            ax.set_ylim(axes.legendAxe.get_ylim())
+        checkbox.on_change('active', update)
 
-        fig = axes.show()
+        layout = row(checkbox, fig)
+        curdoc().add_root(layout)
 
+        show(layout)
         return fig
 
     def cross_plotting_pairs_of_attributes(self, firstCol, secondCol):
@@ -195,9 +206,9 @@ if __name__ == '__main__':
     # plots.print_head_and_tail()
     # plots.print_summary_of_data()
     # plots.data = plots.transpose_index()
-    # plots.parallel_coordinates_graph(normalized=False)
+    plots.parallel_coordinates_graph(normalized=False)
     # plots.plot_quartiles('val')
-    plots.boxplot_all_quartiles(normalized=True)
+    # plots.boxplot_all_quartiles(normalized=True)
     # plots.boxplot_all_quartiles(normalized=True)
     # plots.plot_target_correlation('vol')
     # plots.cross_plotting_pairs_of_attributes('vol', 'val')
