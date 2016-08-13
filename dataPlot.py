@@ -11,13 +11,8 @@ import matplotlib.dates as  mdates
 import matplotlib.colors as colors
 import matplotlib.cm as cmax
 
-from bokeh.plotting import figure
-from bokeh import mpl
 from bokeh.charts import BoxPlot
-from bokeh.plotting import output_file, show
-from bokeh.models import CheckboxGroup
-from bokeh.io import curdoc
-from bokeh.layouts import row
+from bokehPlot import BokehPlot
 
 import pylab
 import scipy.stats as stats
@@ -27,9 +22,8 @@ from datetime import date
 
 from interactivePlotClasses import AxesSequence, AxesVisibility
 
+__all__ = ['DataPlot']
 # TODO let user choose a column to plot colors
-# TODO pick what to be displayed from legend
-
 
 class DataPlot():
     """Child class from dataStatistics to plot interesting data."""
@@ -40,8 +34,8 @@ class DataPlot():
         self.dataFile = dataFile
         self.data = pd.read_csv(self.dataFile, index_col='name')
         # self.set_col_to_categorical()
-        print(self.data.columns)
-        print(self.data.index)
+        # print(self.data.columns)
+        # print(self.data.index)
         self.description = self.data.describe()
         self.numericData = self.data.select_dtypes(include=['float64'])
         self.normalize_data()
@@ -63,9 +57,11 @@ class DataPlot():
             newData.append([d[0][1], d[1]]) # Select the attribute and its value
 
         newData =  DataFrame(newData, columns=['attribute', 'value'])
-        graph = BoxPlot(newData, values='value', label='attribute', title=title)
-
-        return graph # return the boxplot graph for html generation
+        dataDict = dict(data=newData, bokehType='BoxPlot', values='value', label='attribute', title=title)
+        lines = {'line':dataDict}
+        fig = BokehPlot('boxplot_all_quartiles', lines)
+        fig.show()
+        return fig # return the boxplot graph for html generation
 
     def set_col_to_categorical(self):
         """Get a list of attribute for a given column."""
@@ -77,7 +73,6 @@ class DataPlot():
 
     def parallel_coordinates_graph(self, normalized=False):
         """Open a parallel coordinates graph of the attributes."""
-        output_file('parallel_coordinates_graph.html')
         if normalized:
             data = self.normalizedData
         else:
@@ -89,32 +84,17 @@ class DataPlot():
         cNorm  = colors.Normalize(vmin=0, vmax=len(indexes)-1)
         scalarMap = cmax.ScalarMappable(norm=cNorm, cmap=colorMap)
 
-        axes = AxesVisibility(axeNames=indexes, columns=data.columns) # works with numeric indexes see for loop
-
-        checkbox = CheckboxGroup(labels=indexes, active=list(range(len(indexes))), width=100)
-        fig = figure()
         lines = {}
         for i in range(len(indexes)):
             colorVal = scalarMap.to_rgba(i)
             colorVal = colors.rgb2hex(colorVal)
-            numlines = len(data.loc[indexes[i]].values)
-            xs, ys = [list(range(len(data.columns)))]*numlines, [list(v) for v in data.loc[indexes[i]].values]
-            xy = zip(xs, ys)
-            for item in xy:
-                print(item)
-            print(len(xs), len(ys))
-            lines[indexes[i]] = fig.multi_line(xs=xs, ys=ys, line_color=colorVal)
+            indexLines = len(data.loc[indexes[i]].values)
+            xs = [list(range(len(data.columns)))]*indexLines
+            ys = [list(v) for v in data.loc[indexes[i]].values]
+            lines[indexes[i]] = dict(x=xs, y=ys, line_color=colorVal, bokehType='multi_line')
 
-        def update(attr, old, new):
-            for key in lines:
-                lines[key].visible = indexes.index(key) in checkbox.active
-
-        checkbox.on_change('active', update)
-
-        layout = row(checkbox, fig)
-        curdoc().add_root(layout)
-
-        show(layout)
+        fig = BokehPlot('parallel_coordinates_graph', lines, interactive=True)
+        fig.show()
         return fig
 
     def cross_plotting_pairs_of_attributes(self, firstCol, secondCol):
@@ -206,10 +186,10 @@ if __name__ == '__main__':
     # plots.print_head_and_tail()
     # plots.print_summary_of_data()
     # plots.data = plots.transpose_index()
-    plots.parallel_coordinates_graph(normalized=False)
+    plots.parallel_coordinates_graph(normalized=True)
     # plots.plot_quartiles('val')
     # plots.boxplot_all_quartiles(normalized=True)
-    # plots.boxplot_all_quartiles(normalized=True)
+    # plots.boxplot_all_quartiles(normalized=False)
     # plots.plot_target_correlation('vol')
     # plots.cross_plotting_pairs_of_attributes('vol', 'val')
     # plots.plot_pearson_correlation()
