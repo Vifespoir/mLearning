@@ -185,12 +185,12 @@ class dataPlot():
 
 
 if __name__ == '__main__':
-    dataFile = '/home/vifespoir/github/mLearning/data/US/veggies-exp.csv'
+    dataFile = '/home/vifespoir/github/mLearningApp/mLearning/data/US/veggies-exp.csv'
     plots = dataPlot('us-veggies', dataFile)
     # plots.print_head_and_tail()
     # plots.print_summary_of_data()
-    # plots.data = plots.transpose_index()
-    plots.parallel_coordinates_graph(normalized=False)
+    plots.data = plots.transpose_index()
+    # plots.parallel_coordinates_graph(normalized=False)
     # plots.plot_quartiles('val')
     # plots.boxplot_all_quartiles(normalized=False)
     # plots.boxplot_all_quartiles(normalized=True)
