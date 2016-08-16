@@ -1,6 +1,6 @@
 from bokeh.plotting import figure, output_file, show
 from bokeh.models import CheckboxGroup, CustomJS
-from bokeh.layouts import row
+from bokeh.layouts import column
 from bokeh import charts
 import re
 
@@ -48,18 +48,23 @@ class BokehPlot(object):
             error = False
             try:
                 method = getattr(self.fig, methodName)
+                print('METHOD 1: ', method)
                 lines[lineName] = method(*graphData, **line)
             except AttributeError:
                 error = self.fig.__class__.__name__
+                print('ERROR 1: ', error)
                 try:
                     method = getattr(charts, methodName)
+                    print('METHOD 2: ', method)
                     print(line)
                     print(type(line))
-                    self.fig = method(graphData, values=line['values'], label=line['label'], title=line['title'])
                 except AttributeError:
                     error = charts.__class__.__name__
+                    print('ERROR 2: ', error)
                 else:
                     error = False
+                    self.fig = method(graphData, **line)
+                    print('ERROR 3: ', error)
 
             if error:
                 raise NotImplementedError("Class '{}' does not implement '{}'".format(error, methodName))
@@ -84,7 +89,7 @@ class BokehPlot(object):
                                  callback=callback)
         lines['checkbox'] = checkbox
         callback.args = lines
-        layout = row(self.fig, checkbox)
+        layout = column(self.fig, checkbox)
 
         return layout
 

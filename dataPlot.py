@@ -22,6 +22,8 @@ from datetime import date
 
 from interactivePlotClasses import AxesSequence, AxesVisibility
 
+from random import uniform
+
 __all__ = ['DataPlot']
 # TODO let user choose a column to plot colors
 
@@ -41,7 +43,7 @@ class DataPlot():
         self.normalize_data()
         self.summary = self.data.describe()
 
-    def boxplot_all_quartiles(self, normalized=False):
+    def boxplot_all_quartiles(self, normalized=False): # works
         """Plot all normalized quartiles."""
         title = "Quartile Ranges"
         if normalized:
@@ -57,21 +59,12 @@ class DataPlot():
             newData.append([d[0][1], d[1]]) # Select the attribute and its value
 
         newData =  DataFrame(newData, columns=['attribute', 'value'])
-        dataDict = dict(data=newData, bokehType='BoxPlot', values='value', label='attribute', title=title)
-        lines = {'line':dataDict}
+        lines['line'] = dict(data=newData, bokehType='BoxPlot', values='value', label='attribute', title=title)
         fig = BokehPlot('boxplot_all_quartiles', lines)
         fig.show()
         return fig # return the boxplot graph for html generation
 
-    def set_col_to_categorical(self):
-        """Get a list of attribute for a given column."""
-        for i in self.data.columns:
-            if i != 'id':
-                if self.data[i].dtype == 'object':
-                    self.data[i] = self.data[i].astype('category')
-                    print('Column type for "%s" hanged' % i)
-
-    def parallel_coordinates_graph(self, normalized=False):
+    def parallel_coordinates_graph(self, normalized=False): # works
         """Open a parallel coordinates graph of the attributes."""
         if normalized:
             data = self.normalizedData
@@ -97,21 +90,18 @@ class DataPlot():
         fig.show()
         return fig
 
-    def cross_plotting_pairs_of_attributes(self, firstCol, secondCol):
+    def cross_plotting_pairs_of_attributes(self, firstCol, secondCol): # works
         """Open a a graph of correlated pairs of attributes."""
-        firstData = self.data[firstCol]
-        secondData = self.data[secondCol]
+        title = 'cross_plotting_pairs_of_attributes'
+        lines = {}
+        lines['line'] = dict(data=self.data, x=firstCol, y=secondCol, bokehType='Scatter', title=title)
+        fig = BokehPlot(title, lines)
+        fig.show()
+        return fig # return the boxplot graph for html generation
 
-        plt.scatter(firstData, secondData)
-        plt.xlabel(self.data[firstCol].name)
-        plt.ylabel(self.data[secondCol].name)
-
-        output_file("cross_plotting_pairs_of_attributes.html", title="cross_plotting_pairs_of_attributes")
-        show(mpl.to_bokeh())
-
-    def plot_target_correlation(self, col):
+    def plot_target_correlation(self, col): # works
         """Open a graph of attribute and its target attribute."""
-        attributes = self.data['name'].cat.categories
+        attributes = set(self.data.index)
         increment, i, attributesDict = 1 / len(attributes), 0, {}
         for attribute in attributes:
             attributesDict[attribute] = i
@@ -120,30 +110,35 @@ class DataPlot():
         targetValues = []
         for i in self.data.index:
             # add some dither
-            targetValues.append(attributesDict[self.data.iloc[i, 1]] + uniform(-0.1, 0.1))
+            targetValues.append(attributesDict[i] + uniform(-0.1, 0.1))
 
-        plt.scatter(self.data[col], targetValues, alpha=0.5, s=120)
+        title = 'plot_target_correlation' + ':  ' + col
+        lines = {}
+        data = DataFrame(list(zip(targetValues, self.data[col].values)), columns=['Attribute Value', 'Target Value'])
+        lines['line'] = dict(data=data, x='Attribute Value', y='Target Value', bokehType='Scatter', title=title)
+        fig = BokehPlot(title, lines)
+        fig.show()
+        return fig # return the boxplot graph for html generation
 
-        plt.xlabel('Attribute Value')
-        plt.ylabel('Target Value')
-        output_file("plot_target_correlation.html", title="plot_target_correlation")
-        show(mpl.to_bokeh())
-
-    def plot_pearson_correlation(self, normalized=False):
+    def plot_pearson_correlation(self, normalized=False): # underwork
         """Create a heatmap of attributes."""
         if normalized:
             data = self.numericData
         else:
             data = self.oldNumericData
 
-        corrDataFrame = DataFrame(data).corr()
+        data = DataFrame(data).corr()
 
-        plt.pcolor(corrDataFrame)
-        x = np.array([r - 0.5 for r in range(1, len(self.numericData.columns) + 1)])
-        plt.xticks(x, self.numericData.columns)
-        plt.yticks(x, self.numericData.columns)
-        output_file("plot_pearson_correlation.html", title="plot_pearson_correlation")
-        show(mpl.to_bokeh())
+        # x = np.array([r - 0.5 for r in range(1, len(self.numericData.columns) + 1)])
+        # plt.xticks(x, self.numericData.columns)
+        # plt.yticks(x, self.numericData.columns)
+        title = 'plot_pearson_correlation'
+        lines = {}
+        # TODO find equivalent to pcolor in Bokeh
+        lines['line'] = dict(data=data, bokehType='', title=title)
+        fig = BokehPlot(title, lines)
+        fig.show()
+        return fig # return the boxplot graph for html generation
 
     def normalize_data(self):
         """Normalize columns to improve graphical representations."""
@@ -186,10 +181,10 @@ if __name__ == '__main__':
     # plots.print_head_and_tail()
     # plots.print_summary_of_data()
     # plots.data = plots.transpose_index()
-    plots.parallel_coordinates_graph(normalized=True)
+    # plots.parallel_coordinates_graph(normalized=True)
     # plots.plot_quartiles('val')
     # plots.boxplot_all_quartiles(normalized=True)
     # plots.boxplot_all_quartiles(normalized=False)
-    # plots.plot_target_correlation('vol')
+    plots.plot_target_correlation('vol')
     # plots.cross_plotting_pairs_of_attributes('vol', 'val')
     # plots.plot_pearson_correlation()
