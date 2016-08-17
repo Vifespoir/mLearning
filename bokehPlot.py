@@ -12,7 +12,7 @@ BOKEH_TYPE = 'bokehType'
 
 class BokehPlot(object):
     """docstring for """
-    def __init__(self, plotName, lines, figProp=None, interactive=False):
+    def __init__(self, plotName, lines, figProp={}, interactive=False):
         self.plotName, self.lines = plotName, lines
         assert isinstance(plotName, str), 'plotName is not a string'
         assert isinstance(lines, dict), 'lines is not a dictionary'
@@ -51,9 +51,24 @@ class BokehPlot(object):
                 print('METHOD 1: ', method)
             except AttributeError:
                 error = self.fig.__class__.__name__
-                raise NotImplementedError("Class '{}' does not implement '{}'".format(error, methodName))
+                print('ERROR 1: ', error)
+                try:
+                    method = getattr(charts, methodName)
+                    print('METHOD 2: ', method)
+                    print(line)
+                    print(type(line))
+                except AttributeError:
+                    error = charts.__class__.__name__
+                    print('ERROR 2: ', error)
+                else:
+                    error = False
+                    self.fig = method(graphData, **line)
+                    print('ERROR 3: ', error)
             else:
                 lines[lineName] = method(*graphData, **line)
+
+            if error:
+                raise NotImplementedError("Class '{}' does not implement '{}'".format(error, methodName))
 
             print('graphData\n\n', type(graphData))
             print('line\n\n', line)

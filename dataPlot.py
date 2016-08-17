@@ -3,27 +3,14 @@
 import numpy as np
 import pandas as pd
 
-from pandas import DataFrame
-from pandas.tools.plotting import parallel_coordinates
-
-import matplotlib.pyplot as plt
-import matplotlib.dates as  mdates
-import matplotlib.colors as colors
-import matplotlib.cm as cmax
-
-from bokeh.charts import BoxPlot
 from bokehPlot import BokehPlot
-from bokeh.palettes import brewer
-
-import pylab
-import scipy.stats as stats
-
-import sys
-from datetime import date
-
-from interactivePlotClasses import AxesSequence, AxesVisibility
+from bokeh.palettes import brewer, Inferno9
 
 from random import uniform
+
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+import matplotlib.cm as cmax
 
 __all__ = ['DataPlot']
 # TODO let user choose a column to plot colors
@@ -59,8 +46,9 @@ class DataPlot():
         for d in data.items():
             newData.append([d[0][1], d[1]]) # Select the attribute and its value
 
-        newData =  DataFrame(newData, columns=['attribute', 'value'])
-        lines['line'] = dict(data=newData, bokehType='BoxPlot', values='value', label='attribute', title=title)
+        newData =  pd.DataFrame(newData, columns=['attribute', 'value'])
+        lines = {'line': dict(data=newData, bokehType='BoxPlot', values='value',
+                              label='attribute', title=title)}
         fig = BokehPlot('boxplot_all_quartiles', lines)
         fig.show()
         return fig # return the boxplot graph for html generation
@@ -85,7 +73,7 @@ class DataPlot():
             indexLines = len(data.loc[indexes[i]].values)
             xs = [list(range(len(data.columns)))]*indexLines
             ys = [list(v) for v in data.loc[indexes[i]].values]
-            lines[indexes[i]] = dict(xs=xs, ys=ys, line_color=colorVal, bokehType='multi_line')
+            lines[indexes[i]] = dict(x=xs, y=ys, line_color=colorVal, bokehType='multi_line')
 
         fig = BokehPlot('parallel_coordinates_graph', lines, interactive=True)
         fig.show()
@@ -102,6 +90,7 @@ class DataPlot():
 
     def plot_target_correlation(self, col): # works
         """Open a graph of attribute and its target attribute."""
+        # TODO display attribute names on x axis
         attributes = set(self.data.index)
         increment, i, attributesDict = 1 / len(attributes), 0, {}
         for attribute in attributes:
@@ -115,28 +104,34 @@ class DataPlot():
 
         title = 'plot_target_correlation' + ':  ' + col
         lines = {}
-        data = DataFrame(list(zip(targetValues, self.data[col].values)), columns=['Attribute Value', 'Target Value'])
+        data = pd.DataFrame(list(zip(targetValues, self.data[col].values)), columns=['Attribute Value', 'Target Value'])
         lines['line'] = dict(data=data, x='Attribute Value', y='Target Value', bokehType='Scatter', title=title)
         fig = BokehPlot(title, lines)
         fig.show()
         return fig # return the boxplot graph for html generation
 
-    def plot_pearson_correlation(self, normalized=False): # underwork
+    def plot_pearson_correlation(self, normalized=False): # works
         """Create a heatmap of attributes."""
         if normalized:
-            data = self.numericData
+            data = self.normalizedData
         else:
-            data = self.oldNumericData
+            data = self.numericData
 
-        data = DataFrame(data).corr()
-
-        # x = np.array([r - 0.5 for r in range(1, len(self.numericData.columns) + 1)])
-        # plt.xticks(x, self.numericData.columns)
-        # plt.yticks(x, self.numericData.columns)
+        data = data.corr(method='pearson')
         title = 'plot_pearson_correlation'
-        lines = {}
-        # TODO find equivalent to pcolor in Bokeh
-        lines['line'] = dict(data=data, bokehType='', title=title)
+
+        values = []
+        for v in list(data.values):
+            values.extend(v)
+
+        x, y = [], []
+        for c in list(data.columns):
+            x.extend([c]*len(data.index))
+            y.append(c)
+        y = y * len(data.columns)
+        data = {'x':x, 'y':y, 'values':values}
+        lines = {'line': dict(data=data, x='x', y='y', values='values',
+                              bokehType='HeatMap', title=title, stat=None, palette=Inferno9)}
         fig = BokehPlot(title, lines)
         fig.show()
         return fig # return the boxplot graph for html generation
@@ -149,11 +144,10 @@ class DataPlot():
             std_dev = self.description.iloc[2, i]
             self.normalizedData.iloc[:, i:(i+1)] = (self.normalizedData.iloc[:, i:(i+1)] - mean) / std_dev
 
-    def transpose_index(self): # works
+    def transpose_index(self): # WORKS ONLY FOR TEST DATA
         """Transpose the data according to the index."""
         indexes = list(set(self.data.index))
         i = 1
-        axes = AxesSequence()
         lines = {}
         for index in indexes:
             name = index.replace('/ ', '_').replace('/', ' ')
@@ -182,13 +176,10 @@ class DataPlot():
 if __name__ == '__main__':
     dataFile = '/home/vifespoir/github/mLearningApp/mLearning/data/US/veggies-exp.csv'
     plots = DataPlot('us-veggies', dataFile)
-    # plots.print_head_and_tail()
-    # plots.print_summary_of_data()
-    plots.data = plots.transpose_index()
-    # plots.parallel_coordinates_graph(normalized=True)
-    # plots.plot_quartiles('val')
+    # plots.transpose_index()
     # plots.boxplot_all_quartiles(normalized=True)
     # plots.boxplot_all_quartiles(normalized=False)
-    # plots.plot_target_correlation('vol')
+    plots.plot_target_correlation('vol')
     # plots.cross_plotting_pairs_of_attributes('vol', 'val')
-    # plots.plot_pearson_correlation()
+    # plots.plot_pearson_correlation(normalized=True)
+    # plots.parallel_coordinates_graph(normalized=True)
