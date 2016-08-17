@@ -158,17 +158,16 @@ class DataPlot():
         for index in indexes:
             name = index.replace('/ ', '_').replace('/', ' ')
             data = self.data.loc[index].select_dtypes(include=['float64'])
-            data = data.sort(['year', 'month'], ascending=[1, 1])
+            data['day'] = pd.Series([1]*len(data.index), index=data.index)
+            dataDate = data[['year', 'month', 'day']].astype(int)
+            dataDate = pd.to_datetime(dataDate)
+            data['date'] = pd.Series(dataDate, index=data.index)
+            for item in ['year', 'month', 'day']:
+                data.pop(item)
+            data = data.sort_values('date')
             data = data.transpose()
-            zipDate = zip(data.loc['year'], data.loc['month'])
-            data = data.drop('year')
-            data = data.drop('month')
-            dateList = [date(int(x), int(y), 1).toordinal() for x, y in zipDate]
-            dateList = DataFrame([dateList], columns=data.columns, index=['date'])
-            data = data.append(dateList)
             # years, months = mdates.YearLocator(), mdates.MonthLocator()
             colors = brewer['Paired'][len(data.index)]
-            print(colors, len(data.index))
             for i, color in zip(data.index, colors):
                 if i != 'date':
                     lines[i] = dict(x=list(data.loc['date']), y=list(data.loc[i]), bokehType='line', legend=i, color=color)
