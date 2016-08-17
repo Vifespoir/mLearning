@@ -78,7 +78,7 @@ class dataPlot():
     def parallel_coordinates_graph(self, normalized=False):
         """Open a parallel coordinates graph of the attributes."""
         if normalized:
-            data = self.NormalizedData
+            data = self.normalizedData
         else:
             data = self.numericData
             print(data)
@@ -140,9 +140,9 @@ class dataPlot():
     def plot_pearson_correlation(self, normalized=False):
         """Create a heatmap of attributes."""
         if normalized:
-            data = self.numericData
+            data = self.normalizedData
         else:
-            data = self.oldNumericData
+            data = self.numericData
 
         corrDataFrame = DataFrame(data).corr()
 
@@ -154,11 +154,11 @@ class dataPlot():
 
     def normalize_data(self):
         """Normalize columns to improve graphical representations."""
-        self.NormalizedData = self.numericData.copy()
-        for i in range(len(self.NormalizedData.columns)):
+        self.normalizedData = self.numericData.copy()
+        for i in range(len(self.normalizedData.columns)):
             mean = self.description.iloc[1, i]
             std_dev = self.description.iloc[2, i]
-            self.NormalizedData.iloc[:, i:(i+1)] = (self.NormalizedData.iloc[:, i:(i+1)] - mean) / std_dev
+            self.normalizedData.iloc[:, i:(i+1)] = (self.normalizedData.iloc[:, i:(i+1)] - mean) / std_dev
 
     def transpose_index(self):
         """Transpose the data according to the index."""
@@ -189,11 +189,11 @@ if __name__ == '__main__':
     plots = dataPlot('us-veggies', dataFile)
     # plots.print_head_and_tail()
     # plots.print_summary_of_data()
-    plots.data = plots.transpose_index()
+    # plots.data = plots.transpose_index()
     # plots.parallel_coordinates_graph(normalized=False)
     # plots.plot_quartiles('val')
     # plots.boxplot_all_quartiles(normalized=False)
     # plots.boxplot_all_quartiles(normalized=True)
     # plots.plot_target_correlation('vol')
     # plots.cross_plotting_pairs_of_attributes('vol', 'val')
-    # plots.plot_pearson_correlation()
+    plots.plot_pearson_correlation()
