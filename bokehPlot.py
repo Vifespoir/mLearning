@@ -1,4 +1,4 @@
-from bokeh.plotting import figure, output_file, show
+from bokeh.plotting import figure, output_file, show, save
 from bokeh.models import CheckboxGroup, CustomJS
 from bokeh.layouts import column
 from bokeh import charts
@@ -12,11 +12,11 @@ BOKEH_TYPE = 'bokehType'
 
 class BokehPlot(object):
     """docstring for """
-    def __init__(self, plotName, lines, interactive=False):
+    def __init__(self, plotName, lines, figProp=None, interactive=False):
         self.plotName, self.lines = plotName, lines
         assert isinstance(plotName, str), 'plotName is not a string'
         assert isinstance(lines, dict), 'lines is not a dictionary'
-        self.fig = figure()
+        self.fig = figure(**figProp)
         self.interactive = interactive
 
     def _visible_line_JS(self, line):
@@ -29,7 +29,7 @@ class BokehPlot(object):
         """.format(int(line[1:]), line)
 
     def plot_figure(self):
-        output_file(self.plotName + '.html', title=self.plotName)
+        output_file('BokehHTML/' + self.plotName + '.html', title=self.plotName)
         lines, index = {}, 0
         for lineName, line in self.lines.items():
             print(line.keys())
@@ -49,25 +49,11 @@ class BokehPlot(object):
             try:
                 method = getattr(self.fig, methodName)
                 print('METHOD 1: ', method)
-                lines[lineName] = method(*graphData, **line)
             except AttributeError:
                 error = self.fig.__class__.__name__
-                print('ERROR 1: ', error)
-                try:
-                    method = getattr(charts, methodName)
-                    print('METHOD 2: ', method)
-                    print(line)
-                    print(type(line))
-                except AttributeError:
-                    error = charts.__class__.__name__
-                    print('ERROR 2: ', error)
-                else:
-                    error = False
-                    self.fig = method(graphData, **line)
-                    print('ERROR 3: ', error)
-
-            if error:
                 raise NotImplementedError("Class '{}' does not implement '{}'".format(error, methodName))
+            else:
+                lines[lineName] = method(*graphData, **line)
 
             print('graphData\n\n', type(graphData))
             print('line\n\n', line)
@@ -95,7 +81,18 @@ class BokehPlot(object):
 
     def show(self):
         if self.interactive:
-            show(self.interactive_figure())
+            interactive_figure = self.interactive_figure()
+            save(interactive_figure, filename='BokehHTML/' + self.plotName)
+            show(interactive_figure)
         else:
             self.plot_figure()
+            save(obj=self.fig, filename='BokehHTML/' + self.plotName)
             show(self.fig)
+
+    def save(self):
+        if self.interactive:
+            interactive_figure = self.interactive_figure()
+            save(interactive_figure, filename='BokehHTML/' + self.plotName)
+        else:
+            self.plot_figure()
+            save(obj=self.fig, filename='BokehHTML/' + self.plotName)

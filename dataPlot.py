@@ -13,6 +13,7 @@ import matplotlib.cm as cmax
 
 from bokeh.charts import BoxPlot
 from bokehPlot import BokehPlot
+from bokeh.palettes import brewer
 
 import pylab
 import scipy.stats as stats
@@ -84,7 +85,7 @@ class DataPlot():
             indexLines = len(data.loc[indexes[i]].values)
             xs = [list(range(len(data.columns)))]*indexLines
             ys = [list(v) for v in data.loc[indexes[i]].values]
-            lines[indexes[i]] = dict(x=xs, y=ys, line_color=colorVal, bokehType='multi_line')
+            lines[indexes[i]] = dict(xs=xs, ys=ys, line_color=colorVal, bokehType='multi_line')
 
         fig = BokehPlot('parallel_coordinates_graph', lines, interactive=True)
         fig.show()
@@ -153,26 +154,30 @@ class DataPlot():
         indexes = list(set(self.data.index))
         i = 1
         axes = AxesSequence()
-        for index, ax in zip(indexes, axes):
+        lines = {}
+        for index in indexes:
+            name = index.replace('/ ', '_').replace('/', ' ')
             data = self.data.loc[index].select_dtypes(include=['float64'])
             data = data.sort(['year', 'month'], ascending=[1, 1])
             data = data.transpose()
             zipDate = zip(data.loc['year'], data.loc['month'])
-            dateList = [date(int(x), int(y), 1) for x, y in zipDate]
-            years, months = mdates.YearLocator(), mdates.MonthLocator()
-            for i in ['val', 'vol', 'unit_value']:
-                ax.plot(dateList, data.loc[i].values, label=i)
-                ax.set_title(index, size=30)
-                ax.xaxis.set_major_locator(months)
-                ax.xaxis.set_minor_locator(years)
-                ax.set_xticklabels(dateList, rotation=90)
-                ax.legend()
-
-        fig = axes.show()
-
-        # self.transposedData = self.data.transpose()
-
-        return fig
+            data = data.drop('year')
+            data = data.drop('month')
+            dateList = [date(int(x), int(y), 1).toordinal() for x, y in zipDate]
+            dateList = DataFrame([dateList], columns=data.columns, index=['date'])
+            data = data.append(dateList)
+            # years, months = mdates.YearLocator(), mdates.MonthLocator()
+            colors = brewer['Paired'][len(data.index)]
+            print(colors, len(data.index))
+            for i, color in zip(data.index, colors):
+                if i != 'date':
+                    lines[i] = dict(x=list(data.loc['date']), y=list(data.loc[i]), bokehType='line', legend=i, color=color)
+            # ax.xaxis.set_major_locator(months)
+            # ax.xaxis.set_minor_locator(years)
+            # ax.set_xticklabels(dateList, rotation=90)
+            # ax.legend()
+            fig = BokehPlot(name, lines, figProp=dict(x_axis_type='datetime', title=index))
+            fig.save()
 
 
 if __name__ == '__main__':
@@ -180,11 +185,11 @@ if __name__ == '__main__':
     plots = DataPlot('us-veggies', dataFile)
     # plots.print_head_and_tail()
     # plots.print_summary_of_data()
-    # plots.data = plots.transpose_index()
+    plots.data = plots.transpose_index()
     # plots.parallel_coordinates_graph(normalized=True)
     # plots.plot_quartiles('val')
     # plots.boxplot_all_quartiles(normalized=True)
     # plots.boxplot_all_quartiles(normalized=False)
-    plots.plot_target_correlation('vol')
+    # plots.plot_target_correlation('vol')
     # plots.cross_plotting_pairs_of_attributes('vol', 'val')
     # plots.plot_pearson_correlation()
