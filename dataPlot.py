@@ -149,7 +149,7 @@ class DataPlot():
             std_dev = self.description.iloc[2, i]
             self.normalizedData.iloc[:, i:(i+1)] = (self.normalizedData.iloc[:, i:(i+1)] - mean) / std_dev
 
-    def transpose_index(self):
+    def transpose_index(self): # works
         """Transpose the data according to the index."""
         indexes = list(set(self.data.index))
         i = 1
