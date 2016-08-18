@@ -15,6 +15,7 @@ __all__ = ('DataPlot')
 
 
 # TODO run test on other datasets
+# TODO add more assertion and try/except clauses
 
 
 class DataPlot():
