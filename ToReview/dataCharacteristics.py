@@ -1,4 +1,4 @@
-"""Preformat data before  Machine Learning algorithms."""
+"""Preformat data before Machine Learning algorithms."""
 
 # TODO add a file parser to choose file input
 
