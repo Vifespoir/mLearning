@@ -1,7 +1,7 @@
 """Helper module to build Bokeh plots."""
 from bokeh.plotting import figure, output_file, show, save
 from bokeh.models import CheckboxGroup, CustomJS
-from bokeh.layouts import column
+from bokeh.layouts import column, row
 from bokeh import charts
 import logging
 
@@ -31,17 +31,40 @@ class BokehPlot(object):
         self.interactive = interactive
 
     def _visible_line_JS(self, line):
-        """Generate JavaScript code for Bokeh client side, not public."""
+        """Generate JavaScript code for Bokeh client side, not public.
+
+        Toggle visibility of individual line."""
         logging.debug('Generating JavaScript to toggle line visibility...')
 
         return """
-        if ({0} in checkbox.active) {{
-        {1}.visible = true
-        }} else {{
-        {1}.visible = false
-        }}
-        """.format(int(line[1:]), line)
+                if ({0} in checkbox1.active) {{
+                {1}.visible = true
+                }} else {{
+                {1}.visible = false
+                }}
+                """.format(int(line[1:]), line)
         logging.debug('JavaScript generated.')
+
+    def _visible_all_lines_JS(self, lines, buttonIndex):
+        """Generate JavaScript code for Bokeh client side, not public.
+
+        Toggle visibility of all lines."""
+        logging.debug('Generating JavaScript to toggle all lines visibility...')
+
+        ifStatement = "if ({0} in checkbox2.active) {{\n".format(buttonIndex)
+        elseStatement = "else {\n"
+        endStatement = "}\n"
+        lineTrue, lineFalse = [], []
+        for line in lines:
+            lineTrue.append("{}.visible = true\n".format(line))
+            lineFalse.append("{}.visible = false\n".format(line))
+        lineTrue, lineFalse = ''.join(lineTrue), ''.join(lineFalse)
+
+        JScode = ifStatement + lineTrue + endStatement + elseStatement+ lineFalse + endStatement
+
+        logging.debug('JavaScript generated.')
+        print(JScode)
+        return JScode
 
     def plot_figure(self):
         """Construct the figure."""
@@ -50,46 +73,41 @@ class BokehPlot(object):
         output_file('BokehHTML/' + self.plotName + '.html', title=self.plotName)
         lines, index = {}, 0
         for lineName, line in self.lines.items():
-            print(line.keys())
+            # print(line.keys())
             if 'data' in line.keys():
                 graphData = line.pop('data')
             else:
                 graphData = []
                 for prop in MINIMUM_GRAPH_PROPERTIES:
-                    assert prop in line.keys(), 'missing property: %s' % prop
+                    assert prop in line.keys(), 'missing property: "%s"' % prop
                     graphData.append(line.pop(prop))
 
             assert BOKEH_TYPE in line.keys(), 'missing property: %s' % BOKEH_TYPE
             methodName = line.pop(BOKEH_TYPE)
-            print(methodName)
-            print(line.keys())
+            # print(methodName)
+            # print(line.keys())
             error = False
             try:
                 method = getattr(self.fig, methodName)
-                print('METHOD 1: ', method)
+                # logging.debug('METHOD 1: %s' % method)
             except AttributeError:
                 error = self.fig.__class__.__name__
-                print('ERROR 1: ', error)
+                logging.debug('ERROR 1: %s' % error)
                 try:
                     method = getattr(charts, methodName)
-                    print('METHOD 2: ', method)
-                    print(line)
-                    print(type(line))
+                    # logging.debug('METHOD 2: %s' % method)
                 except AttributeError:
                     error = charts.__class__.__name__
-                    print('ERROR 2: ', error)
+                    logging.debug('ERROR 2: %s' % error)
                 else:
                     error = False
                     self.fig = method(graphData, **line)
-                    print('ERROR 3: ', error)
+                    logging.debug('ERROR 3: %s' % error)
             else:
                 lines[lineName] = method(*graphData, **line)
 
             if error:
                 raise NotImplementedError("Class '{}' does not implement '{}'".format(error, methodName))
-
-            print('graphData\n\n', type(graphData))
-            print('line\n\n', line)
             index += 1
 
         logging.debug('Figure plotted.')
@@ -103,32 +121,53 @@ class BokehPlot(object):
         lineNames = ['l'+str(x) for x in range(len(lines))]
         lines = {k: v for k, v in zip(lineNames, lines.values())}
 
+        labels = [i for i in self.lines.keys()]
         JScode = [self._visible_line_JS(k) for k in lines]
         JScode = '\n'.join(JScode)
+        activeL = list(range(len(lines)))
+        print(JScode)
 
-        callback = CustomJS(code=JScode, args={})
-        checkbox = CheckboxGroup(labels=[i for i in self.lines.keys()],
-                                 active=list(range(len(lines))),
-                                 callback=callback)
-        lines['checkbox'] = checkbox
-        callback.args = lines
-        layout = column(self.fig, checkbox)
+        buttonIndex, buttonLabel = 0, 'All Lines'
+        JScodeAllLines = self._visible_all_lines_JS(lines, buttonIndex)
+
+        callback1 = CustomJS(code=JScode, args={})
+        checkbox1 = CheckboxGroup(labels=labels,
+                                  active=activeL,
+                                  callback=callback1,
+                                  name='checkbox1')
+
+        callback2 = CustomJS(code=JScodeAllLines, args={})
+        checkbox2 = CheckboxGroup(labels=[buttonLabel],
+                                  active=[buttonIndex],
+                                  callback=callback2,
+                                  name='checkbox2')
+
+        lines['checkbox1'] = checkbox1
+        lines['checkbox2'] = checkbox2
+        callback1.args = lines
+        callback2.args = lines
+        layout = row(self.fig, checkbox1, checkbox2)
 
         logging.debug('Interaction implemented.')
         return layout
 
-    def show(self):
-        """Show the figure in the browser (works locally)."""
-        logging.debug('Showing figure...')
-
+    def document(self):
+        """Return a Bokeh document object to be rendered."""
+        logging.debug('Returning figure...')
         if self.interactive:
             interactive_figure = self.interactive_figure()
             save(interactive_figure, filename=SAVE_FOLDER + self.plotName)
-            show(interactive_figure)
+            return interactive_figure
         else:
             self.plot_figure()
             save(obj=self.fig, filename=SAVE_FOLDER + self.plotName)
-            show(self.fig)
+            return self.fig
+        logging.debug('Figure returned.')
+
+    def show(self):
+        """Show the figure in the browser (works locally)."""
+        logging.debug('Showing figure...')
+        show(self.document())
         logging.debug('Figure shown.')
 
     def save(self):

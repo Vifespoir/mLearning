@@ -5,7 +5,7 @@ from random import uniform
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import matplotlib.cm as cmax
-import BokehPlot
+from mLearning.bokehPlot import BokehPlot
 import logging
 
 logging.basicConfig(
@@ -22,26 +22,28 @@ class DataPlot():
     """Child class from dataStatistics to plot interesting data."""
     logging.debug('DataPlot class instantiated.')
 
-    def __init__(self, tableName, dataFile):
+    def __init__(self, tableName, dataFile, normalized):
         """Initialize DataPlot."""
         self.tableName = tableName
         self.dataFile = dataFile
         self.data = pd.read_csv(self.dataFile, index_col='name')
         self.description = self.data.describe()
         self.numericData = self.data.select_dtypes(include=['float64'])
-        self.normalize_data()
+        self.currentData = self.numericData
         self.summary = self.data.describe()
+        if normalized == 'True':
+            self.normalize_data()
+            self.normalized = True
+        else:
+            self.denormalize_data()
+            self.normalized = False
 
-    def boxplot_all_quartiles(self, normalized=False):  # works
+    def boxplot_all_quartiles(self):  # works
         """Plot all normalized quartiles."""
         logging.debug('Generating Boxplot...')
 
         title = "Quartile Ranges"
-        if normalized:
-            title = title + "- Normalized"
-            data = self.normalizedData
-        else:
-            data = self.numericData
+        data = self.currentData
         # Prepare a new, simpler data frame with only attributes and their values
         data = data.stack()  # Stack data to get one attribute value per line
         newData = []
@@ -56,16 +58,11 @@ class DataPlot():
         logging.debug('Boxplot generated.')
         return fig  # return the boxplot graph for html generation
 
-    def parallel_coordinates_graph(self, normalized=False):  # works
+    def parallel_coordinates_graph(self):  # works
         """Open a parallel coordinates graph of the attributes."""
         logging.debug('Generating a parallel coordinates graph...')
 
-        if normalized:
-            data = self.normalizedData
-        else:
-            data = self.numericData
-            print(data)
-
+        data = self.currentData
         indexes = [x for x in set(self.data.index)]
         colorMap = plt.get_cmap('Paired')
         cNorm = colors.Normalize(vmin=0, vmax=len(indexes)-1)
@@ -81,10 +78,34 @@ class DataPlot():
             lines[indexes[i]] = dict(x=xs, y=ys, line_color=colorVal, bokehType='multi_line')
 
         fig = BokehPlot('parallel_coordinates_graph', lines, interactive=True)
-        fig.show()
-
         logging.debug('Parallel coordinates graph generated.')
         return fig
+
+    def heatmap_pearson_correlation(self):  # works
+        """Create a heatmap of attributes."""
+        logging.debug('Generating a heatmap of Pearson correlation...')
+
+        data = self.currentData
+
+        data = data.corr(method='pearson')
+        title = 'heatmap_pearson_correlation'
+
+        values = []
+        for v in list(data.values):
+            values.extend(v)
+
+        x, y = [], []
+        for c in list(data.columns):
+            x.extend([c]*len(data.index))
+            y.append(c)
+
+        y = y * len(data.columns)
+        data = {'x': x, 'y': y, 'values': values}
+        lines = {'line': dict(data=data, x='x', y='y', values='values',
+                              bokehType='HeatMap', title=title, stat=None, palette=Inferno9)}
+        fig = BokehPlot(title, lines)
+        logging.debug('Heatmap of Pearson correalation generated.')
+        return fig  # return the boxplot graph for html generation
 
     def cross_plotting_pair_of_attributes(self, firstCol, secondCol):  # works
         """Open a a graph of correlated pairs of attributes."""
@@ -120,36 +141,6 @@ class DataPlot():
         logging.debug('Target correlation plotted.')
         return fig  # return the boxplot graph for html generation
 
-    def heatmap_pearson_correlation(self, normalized=False):  # works
-        """Create a heatmap of attributes."""
-        logging.debug('Generating a heatmap of Pearson correlation...')
-
-        if normalized:
-            data = self.normalizedData
-        else:
-            data = self.numericData
-
-        data = data.corr(method='pearson')
-        title = 'heatmap_pearson_correlation'
-
-        values = []
-        for v in list(data.values):
-            values.extend(v)
-
-        x, y = [], []
-        for c in list(data.columns):
-            x.extend([c]*len(data.index))
-            y.append(c)
-        y = y * len(data.columns)
-        data = {'x': x, 'y': y, 'values': values}
-        lines = {'line': dict(data=data, x='x', y='y', values='values',
-                              bokehType='HeatMap', title=title, stat=None, palette=Inferno9)}
-        fig = BokehPlot(title, lines)
-        fig.show()
-
-        logging.debug('Heatmap of Pearson correalation generated.')
-        return fig  # return the boxplot graph for html generation
-
     def normalize_data(self):
         """Normalize columns to improve graphical representations."""
         logging.debug('Normalizing data...')
@@ -160,6 +151,11 @@ class DataPlot():
             self.normalizedData.iloc[:, i:(i+1)] = (self.normalizedData.iloc[:, i:(i+1)] - mean) / std_dev
 
         logging.debug('Data normalized.')
+        self.currentData, self.normalized = self.normalizedData, True
+
+    def denormalize_data(self):
+        """Denormalize columns."""
+        self.currentData, self.normalized = self.numericData, False
 
     def transpose_index(self):  # WORKS ONLY FOR TEST DATA
         """Transpose the data according to the index."""
