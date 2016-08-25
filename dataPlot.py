@@ -62,6 +62,9 @@ class DataPlot():
         """Open a parallel coordinates graph of the attributes."""
         logging.debug('Generating a parallel coordinates graph...')
 
+        # TODO Add plot element to generate CategoricalTi
+
+        title = 'parallel_coordinates_graph'
         data = self.currentData
         indexes = [x for x in set(self.data.index)]
         colorMap = plt.get_cmap('Paired')
@@ -77,7 +80,7 @@ class DataPlot():
             ys = [list(v) for v in data.loc[indexes[i]].values]
             lines[indexes[i]] = dict(x=xs, y=ys, line_color=colorVal, bokehType='multi_line')
 
-        fig = BokehPlot('parallel_coordinates_graph', lines, interactive=True)
+        fig = BokehPlot(title, lines, interactive=True)
         logging.debug('Parallel coordinates graph generated.')
         return fig
 
@@ -104,6 +107,7 @@ class DataPlot():
         lines = {'line': dict(data=data, x='x', y='y', values='values',
                               bokehType='HeatMap', title=title, stat=None, palette=Inferno9)}
         fig = BokehPlot(title, lines)
+
         logging.debug('Heatmap of Pearson correalation generated.')
         return fig  # return the boxplot graph for html generation
 
@@ -113,9 +117,9 @@ class DataPlot():
 
         title = 'cross_plotting_pair_of_attributes'
         lines = {}
-        lines['line'] = dict(data=self.data, x=firstCol, y=secondCol, bokehType='Scatter', title=title)
+        lines = {'line': dict(data=self.data, x=firstCol, y=secondCol,
+                              bokehType='Scatter', title=title)}
         fig = BokehPlot(title, lines)
-        fig.show()
 
         logging.debug('Pair of attribute crossplotted.')
         return fig  # return the boxplot graph for html generation
@@ -125,7 +129,7 @@ class DataPlot():
         # TODO display attribute names on x axis
         logging.debug('Plotting target correlation...')
 
-        attributesDict = 0
+        attributesDict = list(set(self.data.index))
         targetValues = []
         for i in self.data.index:
             # add some dither
@@ -136,7 +140,6 @@ class DataPlot():
         data = pd.DataFrame(list(zip(targetValues, self.data[col].values)), columns=['Attribute Value', 'Target Value'])
         lines['line'] = dict(data=data, x='Attribute Value', y='Target Value', bokehType='Scatter', title=title)
         fig = BokehPlot(title, lines)
-        fig.show()
 
         logging.debug('Target correlation plotted.')
         return fig  # return the boxplot graph for html generation
@@ -162,6 +165,7 @@ class DataPlot():
         logging.debug('Transposing index into plots...')
         indexes = list(set(self.data.index))
         i = 1
+        figs = {}
         lines = {}
         for index in indexes:
             name = index.replace('/ ', '_').replace('/', ' ')
@@ -185,8 +189,9 @@ class DataPlot():
             # ax.set_xticklabels(dateList, rotation=90)
             # ax.legend()
             fig = BokehPlot(name, lines, figProp=dict(x_axis_type='datetime', title=index))
-            fig.save()
+            figs[fig.plotName] = fig.document()
 
+        return figs
         logging.debug('Index transposed, check "BokehHTML/" for html files.')
 
 
