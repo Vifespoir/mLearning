@@ -31,12 +31,9 @@ class DataPlot():
         self.numericData = self.data.select_dtypes(include=['float64'])
         self.currentData = self.numericData
         self.summary = self.data.describe()
-        if normalized == 'True':
+        self.normalized = normalized
+        if normalized:
             self.normalize_data()
-            self.normalized = True
-        else:
-            self.denormalize_data()
-            self.normalized = False
 
     def boxplot_all_quartiles(self):  # works
         """Plot all normalized quartiles."""
@@ -129,7 +126,12 @@ class DataPlot():
         # TODO display attribute names on x axis
         logging.debug('Plotting target correlation...')
 
-        attributesDict = list(set(self.data.index))
+        attributes = set(self.data.index)
+        increment, i, attributesDict = 1 / len(attributes), 0, {}
+        for attribute in attributes:
+            attributesDict[attribute] = i
+            i += increment
+
         targetValues = []
         for i in self.data.index:
             # add some dither
