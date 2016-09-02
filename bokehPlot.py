@@ -90,7 +90,7 @@ class BokehPlot(object):
 
         lines = self.plot_figure()  # Generates a list of lines
         labels = [line for line in lines.keys()]  # Prepare a list of labels for the tickboxes
-        lineNames = ['l'+str(x) for x in range(len(lines))] # Prepare a list of names for the lines
+        lineNames = ['l'+str(x) for x in range(len(lines))]  # Prepare a list of names for the lines
         lines = {k: v for k, v in zip(lineNames, lines.values())}  # Create a dictionary {name: line}
         activeL = list(range(len(lines)))  # List of all line index to mark them as active in CheckboxGroup
 

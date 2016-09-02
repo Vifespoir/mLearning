@@ -16,6 +16,7 @@ __all__ = ('DataPlot')
 
 # TODO run test on other datasets
 # TODO add more assertion and try/except clauses
+# TODO TODO get rid of matplotlib dependancy
 
 
 class DataPlot():
