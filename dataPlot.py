@@ -163,6 +163,15 @@ class DataPlot():
         """Denormalize columns."""
         self.currentData, self.normalized = self.numericData, False
 
+    def create_date(arg):
+        data['day'] = pd.Series([1]*len(data.index), index=data.index)
+        dataDate = data[['year', 'month', 'day']].astype(int)
+        dataDate = pd.to_datetime(dataDate)
+        data['date'] = pd.Series(dataDate, index=data.index)
+        for item in ['year', 'month', 'day']:
+            data.pop(item)
+
+
     def transpose_index(self):  # WORKS ONLY FOR TEST DATA
         """Transpose the data according to the index."""
         logging.debug('Transposing index into plots...')
@@ -173,12 +182,6 @@ class DataPlot():
         for index in indexes:
             name = index.replace('/ ', '_').replace('/', ' ')
             data = self.data.loc[index].select_dtypes(include=['float64'])
-            data['day'] = pd.Series([1]*len(data.index), index=data.index)
-            dataDate = data[['year', 'month', 'day']].astype(int)
-            dataDate = pd.to_datetime(dataDate)
-            data['date'] = pd.Series(dataDate, index=data.index)
-            for item in ['year', 'month', 'day']:
-                data.pop(item)
             data = data.sort_values('date')
             data = data.transpose()
             # years, months = mdates.YearLocator(), mdates.MonthLocator()
@@ -192,10 +195,12 @@ class DataPlot():
             # ax.set_xticklabels(dateList, rotation=90)
             # ax.legend()
             fig = BokehPlot(name, lines, figProp=dict(x_axis_type='datetime', title=index))
-            figs[fig.plotName] = fig.document()
+            yield (fig.plotName, fig.document())
 
-        return figs
-        logging.debug('Index transposed, check "BokehHTML/" for html files.')
+        #     figs[fig.plotName] = fig.document()
+        #
+        # return figs
+        # logging.debug('Index transposed, check "BokehHTML/" for html files.')
 
 
 if __name__ == '__main__':
