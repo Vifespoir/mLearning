@@ -8,6 +8,7 @@ from bokeh.embed import components
 import logging
 from os import getcwd
 from os.path import join as osjoin
+from time import clock
 
 logging.basicConfig(
     level=logging.DEBUG, format=' %(asctime)s - %(levelname)s - %(message)s')
@@ -15,9 +16,9 @@ logging.basicConfig(
 __all__ = ('BokehPlot')
 
 
-MINIMUM_GRAPH_PROPERTIES = ['x', 'y']
-LINE_NAME_PATTERN = '\w\d+'
 BOKEH_TYPE = 'bokehType'
+MINIMUM_GRAPH_PROPERTIES = ['x', 'y', BOKEH_TYPE]
+LINE_NAME_PATTERN = '\w\d+'
 SAVE_FOLDER = 'BokehHTML/'
 
 
@@ -35,21 +36,23 @@ class BokehPlot(object):
 
     def plot_figure(self):
         """Construct the figure."""
-        logging.debug('Plotting figure...')
 
         output_file('BokehHTML/' + self.plotName + '.html', title=self.plotName)
         lines, index = {}, 0
         for lineName, line in self.lines.items():
             if 'data' in line.keys():
+                assert BOKEH_TYPE in line.keys(), 'missing property: {}, properties: {}'.format(BOKEH_TYPE, line.keys())
                 graphData = line.pop('data')
+                methodName = line.pop(BOKEH_TYPE)
             else:
                 graphData = []
                 for prop in MINIMUM_GRAPH_PROPERTIES:
                     assert prop in line.keys(), 'missing property: "%s"' % prop
-                    graphData.append(line.pop(prop))
+                    if prop == BOKEH_TYPE:
+                        methodName = line.pop(BOKEH_TYPE)
+                    else:
+                        graphData.append(line.pop(prop))
 
-            assert BOKEH_TYPE in line.keys(), 'missing property: {}, properties: {}'.format(BOKEH_TYPE, line.keys())
-            methodName = line.pop(BOKEH_TYPE)
             error = False
             try:
                 method = getattr(self.fig, methodName)
@@ -69,7 +72,7 @@ class BokehPlot(object):
                 raise NotImplementedError("Class '{}' does not implement '{}'".format(error, methodName))
             index += 1
 
-        logging.debug('Figure plotted.')
+        logging.debug('Figure plotted')
         return lines
 
     def _visible_line_JS(self, line):
@@ -82,11 +85,11 @@ class BokehPlot(object):
         {1}.visible = true
         }} else {{
         {1}.visible = false}}""".format(int(line[1:]), line)
-        logging.debug('JavaScript generated.')
+        logging.debug('JavaScript generated')
 
     def interactive_figure(self):
         """Add interactivity, ie. the option to show/hide lines to the figure."""
-        logging.debug('Implementing interaction to figure...')
+
 
         lines = self.plot_figure()  # Generates a list of lines
         labels = [line for line in lines.keys()]  # Prepare a list of labels for the tickboxes
@@ -118,32 +121,34 @@ class BokehPlot(object):
         callback.args, buttonCallback.args = lines, lines  # And then lines to callback
         layout = row(self.fig, widgetbox(children=[button, checkbox], width=200))  # One row, two columns
 
-        logging.debug('Interaction implemented.')
+        logging.debug('Interaction implemented')
         return layout
 
     def document(self):
         """Return a Bokeh document object to be rendered."""
-        logging.debug('Returning document...')
+        
         if self.interactive:
             interactive_figure = self.interactive_figure()
             save(interactive_figure, filename=SAVE_FOLDER + self.plotName)
+            logging.debug('Interactive document returned')
             return interactive_figure
         else:
             self.plot_figure()
             save(obj=self.fig, filename=SAVE_FOLDER + self.plotName)
+            logging.debug('Document returned')
             return self.fig
-        logging.debug('Document returned.')
 
     def show(self):
         """Show the figure in the browser (works locally)."""
+
         logging.debug('Showing figure...')
         show(self.document())
-        logging.debug('Figure shown.')
+        logging.debug('Figure shown')
 
     def save(self):
-        logging.debug('Saving figure...')
-
         """Save the figure at the specified location."""
+
+
         if self.interactive:
             interactive_figure = self.interactive_figure()
             save(interactive_figure, filename=SAVE_FOLDER + self.plotName)
@@ -151,4 +156,4 @@ class BokehPlot(object):
             self.plot_figure()
             save(obj=self.fig, filename=SAVE_FOLDER + self.plotName)
 
-        logging.debug('Figure saved.')
+        logging.debug('Figure saved')
