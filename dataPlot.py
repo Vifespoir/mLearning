@@ -7,7 +7,6 @@ import matplotlib.cm as cmax
 from mLearning.bokehPlot import BokehPlot
 # from bokehPlot import BokehPlot
 import logging
-import concurrent.futures
 from time import clock
 from bokeh.embed import file_html
 from bokeh.resources import CDN
@@ -83,7 +82,7 @@ class DataPlot():
 
     def parallel_coordinates_graph(self):  # works
         """Open a parallel coordinates graph of the attributes."""
-                # TODO Add plot element to generate CategoricalTi
+        # TODO Add plot element to generate CategoricalTi
 
         title = 'parallel_coordinates_graph'
         data = self.currentData
