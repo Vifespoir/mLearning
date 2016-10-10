@@ -4,11 +4,9 @@ from bokeh.models import CustomJS, CheckboxGroup
 from bokeh.layouts import row, widgetbox
 from bokeh import charts
 from bokeh.models.widgets import Button
-from bokeh.embed import components
 import logging
 from os import getcwd
 from os.path import join as osjoin
-from time import clock
 
 logging.basicConfig(
     level=logging.DEBUG, format=' %(asctime)s - %(levelname)s - %(message)s')
@@ -90,7 +88,6 @@ class BokehPlot(object):
     def interactive_figure(self):
         """Add interactivity, ie. the option to show/hide lines to the figure."""
 
-
         lines = self.plot_figure()  # Generates a list of lines
         labels = [line for line in lines.keys()]  # Prepare a list of labels for the tickboxes
         lineNames = ['l'+str(x) for x in range(len(lines))]  # Prepare a list of names for the lines
@@ -126,7 +123,7 @@ class BokehPlot(object):
 
     def document(self):
         """Return a Bokeh document object to be rendered."""
-        
+
         if self.interactive:
             interactive_figure = self.interactive_figure()
             save(interactive_figure, filename=SAVE_FOLDER + self.plotName)
@@ -147,7 +144,6 @@ class BokehPlot(object):
 
     def save(self):
         """Save the figure at the specified location."""
-
 
         if self.interactive:
             interactive_figure = self.interactive_figure()
